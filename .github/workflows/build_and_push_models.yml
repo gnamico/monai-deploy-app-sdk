@@ -1,6 +1,7 @@
 # This workflow will install Python dependencies, build the latest models as containers, and push to the registry the resulting containers
 # TODO: Use cache for caching the docker images, to speed up the build
-# TODO: Can we have the dependencies stored somehow (predownloaded, a custom image, a container registry, our artifact server...) so this will always be reproduceable?
+# --build-cache BUILD_CACHE
+# Specifies a directory path for storing Docker cache. Defaults to ~/.holoscan_build_cache.
 
 name: build_and_push_models
 
@@ -10,6 +11,7 @@ on: workflow_dispatch
 # Version could be infered from the new tag if this was triggered by a new tag push
 # FIXME: Python version could be inferred with "python --version" run inside the containers, and CP is the python version without '.'
 # FIXME: wheel name could be dynamically generated, by for example use "ls" on the download folder
+
 # ARM environment variables are used by the terraform azure provider for authentication using a client secret. 
 # See https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_client_secret
 #     https://github.com/Azure-Samples/terraform-github-actions/blob/main/.github/workflows/tf-plan-apply.yml
@@ -29,6 +31,9 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   APP: "examples/apps/simple_imaging_app"
+  DOCS_DIR: "examples/apps/simple_imaging_app/docs"
+  BASE_IMAGE: "nvcr.io/nvidia/clara-holoscan/holoscan:v0.6.0-dgpu"
+  PIP_INDEX_URL: "https://pypi.org/simple"
 
 jobs:
   do:
@@ -87,7 +92,10 @@ jobs:
       - name: Copy example code
         run: scp -i /tmp/ssh_id_gh -r * adminuser@${AZURE_IPADDRESS}:/home/adminuser/work
       - name: Monai Deploy package
-        run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "mkdir /home/adminuser/work/output && cd /home/adminuser/work &&  monai-deploy package --no-cache /home/adminuser/work/$APP -c /home/adminuser/work/$APP/app.yaml -t $APP_IMAGE_NAME:$DOCKER_IMAGE_TAG --platform $PLATFORM -l DEBUG --holoscan-sdk-file=/home/adminuser/work/holoscan-$VERSION-cp$CP_VERSION-cp$CP_VERSION-manylinux2014_x86_64.whl   --monai-deploy-sdk-file=/home/adminuser/work/monai_deploy_app_sdk-$VERSION-py3-none-any.whl --platform-config dgpu --gid 1000 --output /home/adminuser/work/output"
+        run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "mkdir /home/adminuser/work/output && cd /home/adminuser/work &&  monai-deploy package --no-cache /home/adminuser/work/$APP -c /home/adminuser/work/$APP/app.yaml -t $APP_IMAGE_NAME:$DOCKER_IMAGE_TAG --platform $PLATFORM -l DEBUG --holoscan-sdk-file=/home/adminuser/work/holoscan-$VERSION-cp$CP_VERSION-cp$CP_VERSION-manylinux2014_x86_64.whl   --monai-deploy-sdk-file=/home/adminuser/work/monai_deploy_app_sdk-$VERSION-py3-none-any.whl --platform-config dgpu --gid 1000 --output /home/adminuser/work/output --base-image $BASE_IMAGE --docs $DOCS_DIR --pip-index-url $PIP_INDEX_URL"
+          # TODO: other optional args:
+          # --models
+          # TODO: Build a container based on ^ which adds extra-deps based on a Dockerfile
       - name: Build SBOM
         run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "trivy image --format spdx-json --input /home/adminuser/work/output/$DOCKER_IMAGE_NAME.tar > /home/adminuser/work/output/sbom.spdx.json"
       - name: Size of docker image
@@ -127,3 +135,40 @@ jobs:
       - name: Terraform Destroy
         if: ${{ always() }}
         run: terraform destroy -auto-approve
+# TODO: Other attestations
+# ATTESTATIONS / METADATA
+# SBOM: Software and licenses
+# PROVENANCE
+# SBOM of build system
+# MODEL IN ZOO
+# MODEL CHANGELOG
+# ARXIV PAPER
+# DATA: TRAINING, VALIDATION AND TEST SETs
+# Copyright holder
+# LICENSE
+# Author
+# Contact
+# GIT PROJECT
+# GIT SHASUM
+# MODEL PERFORMANCE (F1 SCORE)
+# CONFIGS
+# ACCEPTANCE TESTS
+# ZOO MODEL REPOSITORY
+# PYTHON REPOSITORY/ARTIFACTORY
+# BASE NVIDIA MONAI CONTAINER IMAGE
+# TARGET REPO
+# BASE VM
+# SOURCE_DATE_EPOCH
+# SECRETS
+# AZURE CREDENTIALS
+# SLES CREDENTIALS
+# the origin
+# copyright holder
+# regulatory compliance level
+# what the software is approved for
+# any other information that is necessary for its use
+# warnings
+# intended for
+# changelog, known bugs, support channel (issues in github), docs
+# spdx 3.0 will include a AI (model arch, model size, required resources, model data preprocessing techniques, model explainability) and Data profile (attributes, behavior of underlying training and test data, such as data collection processes, size, data noise, sensors producing the data, known biases, sensivity indicator, anonymization method in use, confidentiality)!!!! Also build profile, license profile, usage (inteneded usage, validity dates)
+# TODO: extract this as a custom github action
