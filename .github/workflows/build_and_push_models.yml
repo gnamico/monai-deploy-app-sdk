@@ -70,7 +70,7 @@ jobs:
         # We use StrictHostKeyChecking=no to accept the SSH fingerprint on the first connection
         run: ssh -i /tmp/ssh_id_gh -o StrictHostKeyChecking=no adminuser@$AZURE_IPADDRESS "sudo uname -a"
       - name: Add fixed libseccomp package
-        run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "sudo zypper ar -G https://download.opensuse.org/repositories/home:/jordimassaguerpla:/branches:/openSUSE:/Leap:/15.5:/Update/pool-leap-15.5/home:jordimassaguerpla:branches:openSUSE:Leap:15.5:Update.repo && sudo zypper ref && sudo zypper -n install --from home_jordimassaguerpla_branches_openSUSE_Leap_15.5_Update --allow-vendor-change libseccomp"
+        run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "sudo zypper ar -G https://download.opensuse.org/repositories/home:/jordimassaguerpla:/branches:/security/15.5/home:jordimassaguerpla:branches:security.repo && sudo zypper ref && sudo zypper -n install --from home_jordimassaguerpla_branches_security --allow-vendor-change libseccomp"
       - name: Install Deps
         run: ssh -i /tmp/ssh_id_gh adminuser@${AZURE_IPADDRESS} "sudo zypper ar -G https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/ nvidia && sudo zypper ref && sudo zypper --non-interactive install patch python39 docker-buildx nvidia-container-toolkit nvidia-computeG05 cuda-cudart-devel-11-0 libyaml-cpp0_6 trivy && wget -c https://bootstrap.pypa.io/get-pip.py && python3.9 get-pip.py && python3.9 --version" 
       - name: Setup Nvidia container
